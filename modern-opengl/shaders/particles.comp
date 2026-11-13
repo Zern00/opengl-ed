@@ -1,0 +1,38 @@
+#version 450 core
+
+layout(local_size_x = 64) in;
+struct Particle {
+    vec4 position;
+    vec4 velocity;
+};
+layout(std430, binding = 0) buffer Particles {
+    Particle particles[];
+};
+uniform uint particleCount;
+uniform float dt;
+
+float Random(uint seed) {
+    seed = (seed ^ (seed >> 16u)) * 0x7feb352du;
+    seed = (seed ^ (seed >> 15u)) * 0x846ca68bu;
+    return float(seed ^ (seed >> 16u)) / 4294967295.0;
+}
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+    if (id >= particleCount) {
+        return;
+    }
+    Particle p = particles[id];
+    p.position.w += dt;
+    if (p.position.w < 0.0) {
+        particles[id] = p;
+        return;
+    }
+    if (p.position.w >= p.velocity.w || p.velocity.x == 0.0) {
+        p.position = vec4(0.0, -0.7, 0.0, 0.0);
+        p.velocity = vec4((Random(id + 1u) - 0.5) * 1.1, 1.1 + Random(id + 123u) * 0.6, 0.0, 2.0);
+    }
+    p.velocity.y -= dt * 1.4;
+    p.position.xyz += p.velocity.xyz * dt;
+    particles[id] = p;
+}
